@@ -1,12 +1,13 @@
 """Music and Settings destinations for the shared desktop navigation."""
 
 import json
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, quote, urlsplit
 
 from PySide6.QtCore import QSettings, Qt, Signal, QUrl
-from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QLineEdit, QPushButton,
-                               QRadioButton, QScrollArea, QVBoxLayout, QWidget)
+                               QRadioButton, QScrollArea, QStackedWidget, QVBoxLayout,
+                               QWidget)
+from PySide6.QtWebEngineWidgets import QWebEngineView
 
 from core.config import load_config
 from ui.mochi import MochiCat
@@ -44,6 +45,8 @@ class MusicView(_NavigationPage):
         self.settings = QSettings("Pawse", "Pawse")
         self.status = QLabel("")
         self.status.setObjectName("musicStatus")
+        self.now_playing = QLabel("Choose a saved link to play it here.")
+        self.now_playing.setObjectName("musicHint")
 
         eyebrow = QLabel("YOUR CALM LITTLE CORNER / MUSIC")
         eyebrow.setObjectName("sectionEyebrow")
@@ -65,17 +68,27 @@ class MusicView(_NavigationPage):
         player = QVBoxLayout(player_card)
         player.setContentsMargins(28, 28, 28, 28)
         player.setSpacing(16)
-        player.addWidget(MochiCat("sleeping", width=250), 0, Qt.AlignHCenter)
+        self.player_stack = QStackedWidget()
+        self.player_stack.setMinimumHeight(300)
+        self.player_placeholder = QWidget()
+        placeholder = QVBoxLayout(self.player_placeholder)
+        placeholder.addStretch(1)
+        placeholder.addWidget(MochiCat("sleeping", width=250), 0, Qt.AlignHCenter)
+        placeholder.addStretch(1)
+        self.web_player = QWebEngineView()
+        self.web_player.setMinimumHeight(300)
+        self.web_player.loadFinished.connect(self._on_player_load_finished)
+        self.player_stack.addWidget(self.player_placeholder)
+        self.player_stack.addWidget(self.web_player)
+        player.addWidget(self.player_stack, 1)
         player.addWidget(QLabel("A LITTLE BACKGROUND CALM"), 0, Qt.AlignHCenter)
-        player_title = QLabel("Made for your quiet moments")
-        player_title.setObjectName("cardTitle")
-        player_title.setAlignment(Qt.AlignCenter)
-        player.addWidget(player_title)
-        player_note = QLabel("Add a playlist from YouTube or Spotify and let your favorite music keep you company.")
-        player_note.setObjectName("subtitle")
-        player_note.setWordWrap(True)
-        player_note.setAlignment(Qt.AlignCenter)
-        player.addWidget(player_note)
+        self.player_title = QLabel("Made for your quiet moments")
+        self.player_title.setObjectName("cardTitle")
+        self.player_title.setAlignment(Qt.AlignCenter)
+        player.addWidget(self.player_title)
+        self.now_playing.setWordWrap(True)
+        self.now_playing.setAlignment(Qt.AlignCenter)
+        player.addWidget(self.now_playing)
         player.addStretch(1)
         content.addWidget(player_card, 1)
 
@@ -115,7 +128,7 @@ class MusicView(_NavigationPage):
         add_row.addWidget(self.add_button)
         library_col.addLayout(add_row)
 
-        hint = QLabel("Playback opens in your browser so you can use your own account and controls.")
+        hint = QLabel("Playback is embedded here. Sign-in or full playback may depend on your provider and account.")
         hint.setObjectName("musicHint")
         hint.setWordWrap(True)
         library_col.addWidget(hint)
@@ -167,6 +180,31 @@ class MusicView(_NavigationPage):
         if host == "spotify.link" and parsed.path.strip("/"):
             return "Spotify"
         return None
+
+    @staticmethod
+    def _embed_url(value):
+        parsed = urlsplit(value)
+        host = (parsed.hostname or "").lower()
+        if host in {"youtube.com", "www.youtube.com", "m.youtube.com", "music.youtube.com"}:
+            query = parse_qs(parsed.query)
+            playlist_ids = query.get("list")
+            if playlist_ids:
+                return QUrl("https://www.youtube-nocookie.com/embed/videoseries?list="
+                            + quote(playlist_ids[0], safe=""))
+            video_ids = query.get("v")
+            if video_ids:
+                return QUrl("https://www.youtube-nocookie.com/embed/" +
+                            quote(video_ids[0], safe=""))
+        if host == "youtu.be":
+            video_id = parsed.path.strip("/").split("/", 1)[0]
+            return QUrl("https://www.youtube-nocookie.com/embed/" + quote(video_id, safe=""))
+        if host == "open.spotify.com":
+            parts = parsed.path.strip("/").split("/")
+            for index, part in enumerate(parts[:-1]):
+                if part in {"playlist", "track"}:
+                    return QUrl(f"https://open.spotify.com/embed/{part}/"
+                                f"{quote(parts[index + 1], safe='')}?theme=0")
+        return QUrl(value)
 
     def add_playlist(self):
         value = self.link_input.text().strip()
@@ -254,10 +292,19 @@ class MusicView(_NavigationPage):
         if provider is None:
             self.status.setText("This saved link is not a supported YouTube or Spotify link.")
             return
-        if not QDesktopServices.openUrl(QUrl(url)):
-            self.status.setText("Could not open the link in your browser.")
-            return
-        self.status.setText(f"Opening your link in {provider}.")
+        self.now_playing.setText(
+            f"{provider} player selected. Use its embedded controls to start playback.")
+        self.player_title.setText("Now playing")
+        self.player_stack.setCurrentWidget(self.web_player)
+        self.web_player.setUrl(self._embed_url(url))
+        self.status.setText(f"Loading the {provider} player...")
+
+    def _on_player_load_finished(self, success):
+        if success:
+            self.status.setText("Player ready. Press Play in the player to start listening.")
+        else:
+            self.status.setText(
+                "The player could not load. Check your internet connection or open the link with its provider.")
 
     def _remove_playlist(self, index):
         playlists = self._playlists()

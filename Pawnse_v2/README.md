@@ -30,5 +30,6 @@ exceptions require confirmation and can be temporary (25 minutes) or permanent;
 major entertainment targets can only be allowed manually from **Settings**.
 
 The Music page accepts YouTube playlist/video links and Spotify playlist/track
-links, saves them locally, and opens playback in the default browser. Sign-in
-and playback controls remain with the selected music provider.
+links, saves them locally, and embeds each provider's player in the app using
+Qt WebEngine. Sign-in and playback availability follow each provider's account
+and embedded-player policies; no provider passwords are stored by Pawse.
