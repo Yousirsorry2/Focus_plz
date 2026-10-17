@@ -1,10 +1,15 @@
-"""Small Music and Settings destinations for the shared bottom navigation."""
+"""Music and Settings destinations for the shared desktop navigation."""
 
-from PySide6.QtCore import QSettings, Qt, Signal
-from PySide6.QtWidgets import (QFrame, QLabel, QLineEdit,
-                               QPushButton, QRadioButton, QVBoxLayout, QWidget)
+import json
+from urllib.parse import parse_qs, urlsplit
+
+from PySide6.QtCore import QSettings, Qt, Signal, QUrl
+from PySide6.QtGui import QDesktopServices
+from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QLineEdit, QPushButton,
+                               QRadioButton, QScrollArea, QVBoxLayout, QWidget)
 
 from core.config import load_config
+from ui.mochi import MochiCat
 from ui.navigation import BottomNavigation
 from ui.tasks_theme import FULL_QSS
 from ui.theme import make_paw_icon
@@ -19,27 +24,256 @@ class _NavigationPage(QWidget):
         self.setWindowTitle(f"Pawse - {active}")
         self.setWindowIcon(make_paw_icon())
         self.setStyleSheet(FULL_QSS)
-        self.setFixedSize(420, 760)
-        self.root = QVBoxLayout(self)
-        self.root.setContentsMargins(24, 24, 24, 0)
-        self.root.addStretch(1)
+        self.setFixedSize(1200, 760)
+        outer = QHBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
         self.navigation = BottomNavigation(active, self)
         self.navigation.selected.connect(self.navigation_requested.emit)
-        self.root.addWidget(self.navigation)
+        outer.addWidget(self.navigation)
+        content = QWidget()
+        self.root = QVBoxLayout(content)
+        self.root.setContentsMargins(38, 28, 38, 26)
+        self.root.setSpacing(0)
+        outer.addWidget(content, 1)
 
 
 class MusicView(_NavigationPage):
     def __init__(self, parent=None):
         super().__init__("Music")
-        title = QLabel("Music \U0001F3B5")
-        title.setObjectName("title")
-        title.setAlignment(Qt.AlignCenter)
-        note = QLabel("A calm space for your focus soundtrack.")
+        self.settings = QSettings("Pawse", "Pawse")
+        self.status = QLabel("")
+        self.status.setObjectName("musicStatus")
+
+        eyebrow = QLabel("YOUR CALM LITTLE CORNER / MUSIC")
+        eyebrow.setObjectName("sectionEyebrow")
+        title = QLabel("Cozy Sounds")
+        title.setObjectName("sectionTitle")
+        note = QLabel("A softer soundtrack for your day.")
         note.setObjectName("subtitle")
-        note.setAlignment(Qt.AlignCenter)
-        self.root.insertWidget(0, title)
-        self.root.insertWidget(1, note)
-        self.root.insertSpacing(2, 12)
+        self.root.addWidget(eyebrow)
+        self.root.addSpacing(8)
+        self.root.addWidget(title)
+        self.root.addSpacing(4)
+        self.root.addWidget(note)
+        self.root.addSpacing(24)
+
+        content = QHBoxLayout()
+        content.setSpacing(20)
+        player_card = QFrame()
+        player_card.setObjectName("softCard")
+        player = QVBoxLayout(player_card)
+        player.setContentsMargins(28, 28, 28, 28)
+        player.setSpacing(16)
+        player.addWidget(MochiCat("sleeping", width=250), 0, Qt.AlignHCenter)
+        player.addWidget(QLabel("A LITTLE BACKGROUND CALM"), 0, Qt.AlignHCenter)
+        player_title = QLabel("Made for your quiet moments")
+        player_title.setObjectName("cardTitle")
+        player_title.setAlignment(Qt.AlignCenter)
+        player.addWidget(player_title)
+        player_note = QLabel("Add a playlist from YouTube or Spotify and let your favorite music keep you company.")
+        player_note.setObjectName("subtitle")
+        player_note.setWordWrap(True)
+        player_note.setAlignment(Qt.AlignCenter)
+        player.addWidget(player_note)
+        player.addStretch(1)
+        content.addWidget(player_card, 1)
+
+        library = QFrame()
+        library.setObjectName("musicCard")
+        library_col = QVBoxLayout(library)
+        library_col.setContentsMargins(22, 22, 22, 22)
+        library_col.setSpacing(12)
+        eyebrow = QLabel("YOUR PLAYLISTS")
+        eyebrow.setObjectName("sectionEyebrow")
+        library_col.addWidget(eyebrow)
+        library_title = QLabel("Bring your own music")
+        library_title.setObjectName("cardTitle")
+        library_col.addWidget(library_title)
+        self.link_input = QLineEdit()
+        self.link_input.setObjectName("musicLink")
+        self.link_input.setPlaceholderText("Paste a YouTube or Spotify playlist link")
+        self.link_input.returnPressed.connect(self.add_playlist)
+        library_col.addWidget(self.link_input)
+
+        add_row = QHBoxLayout()
+        add_row.setSpacing(8)
+        self.youtube_button = QPushButton("YouTube")
+        self.spotify_button = QPushButton("Spotify")
+        for button, provider in ((self.youtube_button, "YouTube"),
+                                 (self.spotify_button, "Spotify")):
+            button.setObjectName("providerButton")
+            button.setProperty("provider", provider)
+            button.setCursor(Qt.PointingHandCursor)
+            button.clicked.connect(lambda _=False, name=provider: self._set_provider(name))
+            add_row.addWidget(button)
+        add_row.addStretch(1)
+        self.add_button = QPushButton("+  Save playlist")
+        self.add_button.setObjectName("capsulePrimary")
+        self.add_button.setCursor(Qt.PointingHandCursor)
+        self.add_button.clicked.connect(self.add_playlist)
+        add_row.addWidget(self.add_button)
+        library_col.addLayout(add_row)
+
+        hint = QLabel("Playback opens in your browser so you can use your own account and controls.")
+        hint.setObjectName("musicHint")
+        hint.setWordWrap(True)
+        library_col.addWidget(hint)
+        self.status.setWordWrap(True)
+        library_col.addWidget(self.status)
+
+        playlist_host = QWidget()
+        self.playlist_list = QVBoxLayout(playlist_host)
+        self.playlist_list.setContentsMargins(0, 4, 0, 4)
+        self.playlist_list.setSpacing(8)
+        playlist_scroll = QScrollArea()
+        playlist_scroll.setWidgetResizable(True)
+        playlist_scroll.setFrameShape(QFrame.NoFrame)
+        playlist_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        playlist_scroll.setWidget(playlist_host)
+        library_col.addWidget(playlist_scroll, 1)
+        content.addWidget(library, 1)
+        self.root.addLayout(content, 1)
+        self._render_playlists()
+
+    def _set_provider(self, provider):
+        example = ("https://www.youtube.com/playlist?list=" if provider == "YouTube"
+                   else "https://open.spotify.com/playlist/")
+        self.link_input.setText(example)
+        self.link_input.setFocus()
+        self.link_input.setCursorPosition(len(example))
+
+    @staticmethod
+    def _provider_for_url(value):
+        try:
+            parsed = urlsplit(value)
+            host = (parsed.hostname or "").lower()
+        except ValueError:
+            return None
+        if parsed.scheme != "https" or parsed.username or parsed.password:
+            return None
+        if host in {"youtube.com", "www.youtube.com", "m.youtube.com", "music.youtube.com"}:
+            query = parse_qs(parsed.query)
+            if (parsed.path == "/playlist" and query.get("list")) or (
+                    parsed.path == "/watch" and query.get("list")):
+                return "YouTube"
+        if host == "youtu.be" and parsed.path.strip("/"):
+            return "YouTube"
+        if host == "open.spotify.com":
+            parts = parsed.path.strip("/").split("/")
+            if any(part in {"playlist", "track"} and index + 1 < len(parts)
+                   and parts[index + 1] for index, part in enumerate(parts)):
+                return "Spotify"
+        if host == "spotify.link" and parsed.path.strip("/"):
+            return "Spotify"
+        return None
+
+    def add_playlist(self):
+        value = self.link_input.text().strip()
+        provider = self._provider_for_url(value)
+        if provider is None:
+            self.status.setText("Paste a valid YouTube or Spotify playlist link (https://).")
+            return
+
+        playlists = self._playlists()
+        if playlists is None:
+            return
+        if value in playlists:
+            self.status.setText("That playlist is already in your library.")
+            return
+        playlists.append(value)
+        self.settings.setValue("music_playlists", json.dumps(playlists, ensure_ascii=False))
+        self.settings.sync()
+        if self.settings.status() != QSettings.NoError:
+            self.status.setText("Could not save the playlist. Check your app settings storage.")
+            return
+        self.link_input.clear()
+        self.status.setText(f"{provider} link saved. Press Play to open it.")
+        self._render_playlists(playlists)
+
+    def _playlists(self):
+        try:
+            playlists = json.loads(self.settings.value("music_playlists", "[]"))
+        except (TypeError, ValueError):
+            self.status.setText("Saved playlist data could not be read.")
+            return None
+        if not isinstance(playlists, list) or any(not isinstance(item, str) for item in playlists):
+            self.status.setText("Saved playlist data has an invalid format.")
+            return None
+        return playlists
+
+    def _render_playlists(self, playlists=None):
+        while self.playlist_list.count():
+            item = self.playlist_list.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+        playlists = self._playlists() if playlists is None else playlists
+        if playlists is None:
+            return
+        if not playlists:
+            empty = QLabel("Your saved playlists will appear here.")
+            empty.setObjectName("musicHint")
+            empty.setWordWrap(True)
+            self.playlist_list.addWidget(empty)
+            return
+
+        for index, url in enumerate(playlists):
+            provider = self._provider_for_url(url)
+            row = QFrame()
+            row.setObjectName("dashboardCard")
+            layout = QHBoxLayout(row)
+            layout.setContentsMargins(12, 8, 8, 8)
+            layout.setSpacing(8)
+            info = QVBoxLayout()
+            label = QLabel(f"{provider} link" if provider else "Unsupported saved link")
+            label.setObjectName("fieldTitle")
+            url_label = QLabel(url)
+            url_label.setObjectName("musicHint")
+            url_label.setWordWrap(True)
+            url_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+            info.addWidget(label)
+            info.addWidget(url_label)
+            layout.addLayout(info, 1)
+            play = QPushButton("▶  Play")
+            play.setObjectName("playlistPlay")
+            play.setCursor(Qt.PointingHandCursor)
+            play.setEnabled(provider is not None)
+            play.clicked.connect(lambda _=False, link=url: self._open_playlist(link))
+            layout.addWidget(play)
+            remove = QPushButton("×")
+            remove.setObjectName("playlistRemove")
+            remove.setToolTip("Remove playlist")
+            remove.setCursor(Qt.PointingHandCursor)
+            remove.clicked.connect(lambda _=False, i=index: self._remove_playlist(i))
+            layout.addWidget(remove)
+            self.playlist_list.addWidget(row)
+
+    def _open_playlist(self, url):
+        provider = self._provider_for_url(url)
+        if provider is None:
+            self.status.setText("This saved link is not a supported YouTube or Spotify link.")
+            return
+        if not QDesktopServices.openUrl(QUrl(url)):
+            self.status.setText("Could not open the link in your browser.")
+            return
+        self.status.setText(f"Opening your link in {provider}.")
+
+    def _remove_playlist(self, index):
+        playlists = self._playlists()
+        if playlists is None:
+            return
+        if not 0 <= index < len(playlists):
+            self.status.setText("The selected playlist is no longer available.")
+            return
+        playlists.pop(index)
+        self.settings.setValue("music_playlists", json.dumps(playlists, ensure_ascii=False))
+        self.settings.sync()
+        if self.settings.status() != QSettings.NoError:
+            self.status.setText("Could not remove the playlist from your library.")
+            return
+        self.status.setText("Playlist removed.")
+        self._render_playlists(playlists)
 
 
 class SettingsView(_NavigationPage):

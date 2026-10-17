@@ -198,9 +198,10 @@ def alert_popup(payload: dict, task: str, tracker, on_mark_work, on_closed) -> P
         detail=payload["detail"],
         footer=footer,
         buttons=[
-            [("Back to Work", "primary", tracker.back_to_work, True),
-             (work_label, "work", on_mark_work,
-              bool(target) and not hard_blocked, work_tip)],
+             [("Back to Work", "primary", tracker.back_to_work, True)#,
+            #  (work_label, "work", on_mark_work,
+            #   bool(target) and not hard_blocked, work_tip)
+            ],
             [(snooze_text, "outline", tracker.snooze, payload["can_snooze"]),
              ("Skip", "text", tracker.skip, True)],
         ],

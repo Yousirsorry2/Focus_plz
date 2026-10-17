@@ -209,7 +209,7 @@ class AddTaskDialog(QDialog):
         self.setWindowTitle("Edit task" if task else "Add a task")
         self.setStyleSheet(FULL_QSS + _minimal_qss())
         self.setModal(True)
-        self.setFixedWidth(400)
+        self.setFixedWidth(520)
 
         cats = store.list_categories()
         self._cat = task["category_name"] if task else cats[0]["name"]

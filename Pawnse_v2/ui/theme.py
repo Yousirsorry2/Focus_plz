@@ -61,7 +61,7 @@ QPushButton#lengthButton:hover {{ text-decoration: underline; }}
 
 QCheckBox {{ font-size: 12px; font-weight: 500; }}
 
-QFrame#taskBar {{ background: #FFFFFF; border-top: 1px solid {COCOA_LINE}; }}
+QFrame#taskBar {{ background: #FFFFFF; border: 1px solid {COCOA_LINE}; border-radius: 18px; }}
 QLabel#taskCaption {{ font-size: 11px; font-weight: 600; letter-spacing: 1px; color: {COCOA_SOFT}; }}
 QLabel#taskName    {{ font-size: 15px; font-weight: 600; }}
 QPushButton#linkButton {{

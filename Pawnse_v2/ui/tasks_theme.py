@@ -1,27 +1,53 @@
-"""Extra QSS for My Tasks, the Add Task sheet and the Mark-as-Work popup button.
-
-Kept separate so theme.py stays untouched. Same palette tokens:
-canvas #FDFBF7, peach #FFD1BA, mint #C8E6C9, cocoa #4A403A.
-"""
+"""Additional QSS for task screens and dialogs, appended to the shared app theme."""
 
 from ui.theme import APP_QSS, COCOA, COCOA_LINE, COCOA_SOFT, CREAM, MINT, PEACH, PEACH_HOVER, PEACH_PRESS
 
 TASKS_QSS = f"""
 QWidget#TasksWindow {{ background: {CREAM}; }}
 QDialog#sheet {{ background: {CREAM}; }}
-QFrame#bottomNavigation {{ background: {CREAM}; border-top: 1px solid {COCOA_LINE}; }}
-QPushButton#navTab {{
-    border: 1px solid {COCOA_LINE}; border-radius: 17px;
-    min-height: 34px; padding: 0 5px; font-size: 11px; font-weight: 600;
+QFrame#sideNavigation {{ background: {MINT}; border: none; }}
+QLabel#navBrand {{ font-size: 21px; font-weight: 700; }}
+QLabel#navFooter {{ color: {COCOA_SOFT}; font-size: 12px; line-height: 1.3; }}
+QLabel#navProfile {{
+    background: rgba(255,255,255,0.5); border-radius: 12px;
+    padding: 10px; font-size: 12px; font-weight: 600;
 }}
-QPushButton#navTab[tab="Tasks"] {{ background: {PEACH}; }}
-QPushButton#navTab[tab="Focus"] {{ background: {MINT}; }}
-QPushButton#navTab[tab="Music"] {{ background: #D6E4F5; }}
-QPushButton#navTab[tab="Settings"] {{ background: #FFF1B8; }}
-QPushButton#navTab:checked {{ border: 1.5px solid {COCOA}; font-weight: 700; }}
-QPushButton#navTab:hover {{ border-color: {COCOA}; }}
+QPushButton#navTab {{
+    border: 1px solid transparent; border-radius: 16px;
+    min-height: 42px; padding: 0 12px; text-align: left;
+    font-size: 13px; font-weight: 600; background: transparent;
+}}
+QPushButton#navTab:checked {{ background: {PEACH}; border-color: {PEACH}; font-weight: 700; }}
+QPushButton#navTab:hover {{ background: rgba(255,255,255,0.42); }}
 QFrame#settingsCard {{ background: #FFFFFF; border: 1px solid {COCOA_LINE}; border-radius: 16px; }}
 QLabel#settingsRules {{ background: #FFFFFF; border: 1px solid {COCOA_LINE}; border-radius: 14px; padding: 12px; }}
+QFrame#dashboardCard, QFrame#musicCard {{
+    background: #FFFFFF; border: 1px solid rgba(74,64,58,0.08); border-radius: 20px;
+}}
+QFrame#softCard {{ background: rgba(200,230,201,0.45); border: none; border-radius: 18px; }}
+QLabel#sectionEyebrow {{ color: {COCOA_SOFT}; font-size: 10px; font-weight: 700; letter-spacing: 1px; }}
+QLabel#sectionTitle {{ font-size: 22px; font-weight: 700; }}
+QLabel#cardTitle {{ font-size: 16px; font-weight: 700; }}
+QLineEdit#musicLink {{
+    background: {CREAM}; border: 1px solid {COCOA_LINE}; border-radius: 12px;
+    padding: 10px 12px; min-height: 22px; font-size: 13px;
+}}
+QPushButton#providerButton {{
+    border: 1px solid {COCOA_LINE}; border-radius: 12px; background: #FFFFFF;
+    min-height: 38px; padding: 0 12px; font-size: 12px; font-weight: 600;
+}}
+QPushButton#providerButton:hover {{ background: {CREAM}; border-color: {COCOA}; }}
+QPushButton#providerButton[provider="YouTube"] {{ color: #B3261E; }}
+QPushButton#providerButton[provider="Spotify"] {{ color: #187A48; }}
+QPushButton#playlistPlay {{
+    background: {PEACH}; border: none; border-radius: 12px;
+    min-height: 36px; padding: 0 12px; font-weight: 700;
+}}
+QPushButton#playlistRemove {{
+    background: transparent; border: none; color: {COCOA_SOFT}; font-size: 15px;
+}}
+QLabel#musicHint {{ color: {COCOA_SOFT}; font-size: 11px; }}
+QLabel#musicStatus {{ font-size: 12px; font-weight: 600; }}
 
 /* ---------- category filter chips ---------- */
 QPushButton#chip {{

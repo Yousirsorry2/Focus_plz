@@ -15,6 +15,7 @@ from ui.tasks_theme import FULL_QSS
 from ui.theme import PEACH_HOVER, make_paw_icon
 from ui.widgets import PawCheck
 from ui.navigation import BottomNavigation
+from ui.mochi import MochiCat
 
 
 def _repolish(w):
@@ -155,18 +156,55 @@ class TasksView(QWidget):
         self.setWindowTitle("Pawse - My Tasks")
         self.setWindowIcon(make_paw_icon())
         self.setStyleSheet(FULL_QSS)
-        self.setFixedSize(420, 760)
+        self.setFixedSize(1200, 760)
         self._build()
         self.refresh()
 
     # ---- layout ---------------------------------------------------------------
     def _build(self):
-        root = QVBoxLayout(self)
+        outer = QHBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+        self.navigation = BottomNavigation("Tasks", self)
+        self.navigation.selected.connect(self.navigation_requested.emit)
+        outer.addWidget(self.navigation)
+
+        main = QWidget()
+        outer.addWidget(main, 1)
+        main_row = QHBoxLayout(main)
+        main_row.setContentsMargins(34, 24, 34, 24)
+        main_row.setSpacing(22)
+        root = QVBoxLayout()
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
+        main_row.addLayout(root, 3)
+
+        overview = QFrame()
+        overview.setObjectName("softCard")
+        overview_col = QVBoxLayout(overview)
+        overview_col.setContentsMargins(18, 20, 18, 20)
+        overview_col.setSpacing(12)
+        eyebrow = QLabel("YOUR FOCUS")
+        eyebrow.setObjectName("sectionEyebrow")
+        overview_col.addWidget(eyebrow)
+        overview_col.addWidget(MochiCat("sleeping", width=190), 0, Qt.AlignHCenter)
+        overview_title = QLabel("One little win at a time.")
+        overview_title.setObjectName("cardTitle")
+        overview_title.setWordWrap(True)
+        overview_col.addWidget(overview_title)
+        self.overview_task = QLabel("Choose a task to focus on.")
+        self.overview_task.setObjectName("subtitle")
+        self.overview_task.setWordWrap(True)
+        overview_col.addWidget(self.overview_task)
+        overview_col.addStretch(1)
+        overview_note = QLabel("No rush. Make room for one little thing.")
+        overview_note.setObjectName("musicHint")
+        overview_note.setWordWrap(True)
+        overview_col.addWidget(overview_note)
+        main_row.addWidget(overview, 1)
 
         head = QVBoxLayout()
-        head.setContentsMargins(28, 18, 28, 0)
+        head.setContentsMargins(0, 0, 0, 0)
         head.setSpacing(0)
         back = QPushButton("\u2190 Focus Mode")
         back.setObjectName("linkButton")
@@ -224,7 +262,7 @@ class TasksView(QWidget):
         # bottom bar
         bar = QFrame()
         bar.setObjectName("taskBar")
-        bar.setFixedHeight(84)
+        bar.setFixedHeight(72)
         b = QHBoxLayout(bar)
         b.setContentsMargins(24, 0, 24, 0)
         b.setSpacing(12)
@@ -241,9 +279,6 @@ class TasksView(QWidget):
         b.addWidget(self.start_btn, 4)
         b.addWidget(self.add_btn, 5)
         root.addWidget(bar)
-        self.navigation = BottomNavigation("Tasks", self)
-        self.navigation.selected.connect(self.navigation_requested.emit)
-        root.addWidget(self.navigation)
 
     # ---- chips ---------------------------------------------------------------------
     def _sync_chips(self):
@@ -312,6 +347,8 @@ class TasksView(QWidget):
 
         if self.selected_id not in self.cards:
             self.selected_id = None
+        selected = self.store.get_task(self.selected_id) if self.selected_id else None
+        self.overview_task.setText(selected["title"] if selected else "Choose a task to focus on.")
         self._sync_start()
 
     def _add_card(self, task):
@@ -334,6 +371,8 @@ class TasksView(QWidget):
         self.selected_id = None if self.selected_id == task_id else task_id
         for tid, card in self.cards.items():
             card.set_selected(tid == self.selected_id)
+        task = self.store.get_task(self.selected_id) if self.selected_id else None
+        self.overview_task.setText(task["title"] if task else "Choose a task to focus on.")
         self._sync_start()
 
     def _sync_start(self):
