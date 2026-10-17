@@ -12,7 +12,8 @@ from PySide6.QtWidgets import (QButtonGroup, QDialog, QFrame, QHBoxLayout, QLabe
 from PC.core.task_store import parse_iso
 from ui.add_task_dialog import AddTaskDialog
 from ui.tasks_theme import FULL_QSS
-from ui.theme import PEACH_HOVER, make_paw_icon
+from ui.theme import (MOBILE_MINIMUM_WINDOW_SIZE, MOBILE_WINDOW_SIZE, PEACH_HOVER,
+                      make_paw_icon)
 from ui.widgets import PawCheck
 from ui.navigation import BottomNavigation
 
@@ -155,8 +156,8 @@ class TasksView(QWidget):
         self.setWindowTitle("Pawse - My Tasks")
         self.setWindowIcon(make_paw_icon())
         self.setStyleSheet(FULL_QSS)
-        self.resize(390, 844)
-        self.setMinimumSize(320, 600)
+        self.resize(*MOBILE_WINDOW_SIZE)
+        self.setMinimumSize(*MOBILE_MINIMUM_WINDOW_SIZE)
         self._build()
         self.refresh()
 

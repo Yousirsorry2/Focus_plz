@@ -1,7 +1,7 @@
 """Mobile bottom navigation shared by Pawse screens."""
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QButtonGroup, QFrame, QHBoxLayout, QToolButton
+from PySide6.QtWidgets import QButtonGroup, QFrame, QHBoxLayout, QLabel, QToolButton, QVBoxLayout
 
 
 class BottomNavigation(QFrame):
@@ -11,7 +11,7 @@ class BottomNavigation(QFrame):
     def __init__(self, active: str, parent=None):
         super().__init__(parent)
         self.setObjectName("bottomNavigation")
-        self.setFixedHeight(74)
+        self.setFixedHeight(78)
         row = QHBoxLayout(self)
         row.setContentsMargins(8, 5, 8, 5)
         row.setSpacing(4)
@@ -22,13 +22,24 @@ class BottomNavigation(QFrame):
         for name, icon in self.TABS:
             button = QToolButton()
             button.setObjectName("navTab")
-            button.setText(f"{icon}\n{name}")
             button.setProperty("tab", name)
-            button.setToolButtonStyle(Qt.ToolButtonTextOnly)
             button.setToolTip(name)
             button.setCheckable(True)
             button.setChecked(name == active)
             button.setCursor(Qt.PointingHandCursor)
+            content = QVBoxLayout(button)
+            content.setContentsMargins(0, 2, 0, 2)
+            content.setSpacing(0)
+            icon_label = QLabel(icon)
+            icon_label.setObjectName("navIcon")
+            icon_label.setAlignment(Qt.AlignCenter)
+            icon_label.setAttribute(Qt.WA_TransparentForMouseEvents)
+            name_label = QLabel(name)
+            name_label.setObjectName("navLabel")
+            name_label.setAlignment(Qt.AlignCenter)
+            name_label.setAttribute(Qt.WA_TransparentForMouseEvents)
+            content.addWidget(icon_label)
+            content.addWidget(name_label)
             button.clicked.connect(lambda _=False, tab=name: self.selected.emit(tab))
             group.addButton(button)
             row.addWidget(button, 1)

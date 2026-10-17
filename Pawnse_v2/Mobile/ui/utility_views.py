@@ -14,7 +14,7 @@ from PC.core.config import load_config
 from ui.mochi import MochiCat
 from ui.navigation import BottomNavigation
 from ui.tasks_theme import FULL_QSS
-from ui.theme import make_paw_icon
+from ui.theme import MOBILE_MINIMUM_WINDOW_SIZE, MOBILE_WINDOW_SIZE, make_paw_icon
 
 
 class _NavigationPage(QWidget):
@@ -26,8 +26,8 @@ class _NavigationPage(QWidget):
         self.setWindowTitle(f"Pawse - {active}")
         self.setWindowIcon(make_paw_icon())
         self.setStyleSheet(FULL_QSS)
-        self.resize(390, 844)
-        self.setMinimumSize(320, 600)
+        self.resize(*MOBILE_WINDOW_SIZE)
+        self.setMinimumSize(*MOBILE_MINIMUM_WINDOW_SIZE)
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(0)

@@ -14,6 +14,9 @@ PEACH_PRESS = "#FFB898"
 
 FONT_STACK = '"Inter", "Segoe UI", "Segoe UI Emoji", sans-serif'
 
+MOBILE_WINDOW_SIZE = (390, 760)
+MOBILE_MINIMUM_WINDOW_SIZE = (320, 600)
+
 APP_QSS = f"""
 * {{ font-family: {FONT_STACK}; color: {COCOA}; }}
 QLabel {{ background: transparent; }}
@@ -32,10 +35,10 @@ QLabel#statusNote {{ font-size: 12px; color: {COCOA_SOFT}; }}
 QLabel#timer {{ font-size: 76px; font-weight: 600; letter-spacing: 2px; }}
 
 QProgressBar#sessionBar {{
-    background: rgba(74,64,58,0.08); border: none; border-radius: 3px;
-    max-height: 6px; min-height: 6px;
+    background: rgba(74,64,58,0.08); border: none; border-radius: 6px;
+    max-height: 12px; min-height: 12px;
 }}
-QProgressBar#sessionBar::chunk {{ background: {MINT}; border-radius: 3px; }}
+QProgressBar#sessionBar::chunk {{ background: {MINT}; border-radius: 6px; }}
 
 QPushButton {{ font-size: 14px; font-weight: 600; }}
 QPushButton#capsulePrimary, QPushButton#capsule {{
@@ -50,12 +53,12 @@ QPushButton#capsule:disabled {{ color: rgba(74,64,58,0.35); border-color: rgba(7
 
 QPushButton#stepButton {{
     background: #FFFFFF; border: 1px solid {COCOA_LINE}; border-radius: 15px;
-    min-width: 30px; max-width: 30px; min-height: 30px; max-height: 30px;
-    padding: 0; font-size: 16px; font-weight: 600;
+    min-width: 40px; max-width: 40px; min-height: 40px; max-height: 40px;
+    padding: 0; font-size: 20px; font-weight: 600;
 }}
 QPushButton#stepButton:hover {{ background: {CREAM}; border-color: {COCOA}; }}
 QPushButton#lengthButton {{
-    background: transparent; border: none; font-size: 13px; font-weight: 600; padding: 4px 8px;
+    background: transparent; border: none; font-size: 15px; font-weight: 600; padding: 6px 10px;
 }}
 QPushButton#lengthButton:hover {{ text-decoration: underline; }}
 

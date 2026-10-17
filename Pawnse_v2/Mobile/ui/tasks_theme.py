@@ -7,15 +7,17 @@ QWidget#TasksWindow {{ background: {CREAM}; }}
 QDialog#sheet {{ background: {CREAM}; }}
 QFrame#bottomNavigation {{ background: {MINT}; border-top: 1px solid {COCOA_LINE}; }}
 QToolButton#navTab {{
-    border: none; border-radius: 14px; min-height: 58px;
-    padding: 3px 2px; font-size: 10px; font-weight: 600;
+    border: none; border-radius: 14px; min-height: 62px;
+    padding: 3px 2px; font-size: 12px; font-weight: 600;
     background: transparent; text-align: center;
 }}
 QToolButton#navTab:checked {{ background: {PEACH}; font-weight: 700; }}
 QToolButton#navTab:hover {{ background: rgba(255,209,186,0.45); }}
+QLabel#navIcon {{ font-size: 23px; }}
+QLabel#navLabel {{ font-size: 11px; font-weight: 600; }}
 QWidget#mobilePage {{ background: {CREAM}; }}
 QLabel#title {{ font-size: 24px; }}
-QLabel#timer {{ font-size: 56px; }}
+QLabel#timer {{ font-size: 68px; }}
 QLabel#taskCaption {{ font-size: 10px; }}
 QLabel#taskName {{ font-size: 14px; }}
 QFrame#settingsCard {{ background: #FFFFFF; border: 1px solid {COCOA_LINE}; border-radius: 16px; }}

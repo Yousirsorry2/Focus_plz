@@ -12,7 +12,8 @@ from PySide6.QtWidgets import (QCheckBox, QFrame, QHBoxLayout, QInputDialog, QLa
 
 from ui.mochi import MochiCat
 from ui.tasks_theme import FULL_QSS
-from ui.theme import COCOA, MINT, make_paw_icon
+from ui.theme import (COCOA, MINT, MOBILE_MINIMUM_WINDOW_SIZE, MOBILE_WINDOW_SIZE,
+                      make_paw_icon)
 from ui.navigation import BottomNavigation
 
 SESSION_MINUTES = 25
@@ -80,8 +81,8 @@ class FocusWindow(QWidget):
         self.setWindowTitle("Pawse - Focus Mode")
         self.setWindowIcon(make_paw_icon())
         self.setStyleSheet(FULL_QSS)
-        self.resize(390, 844)
-        self.setMinimumSize(320, 600)
+        self.resize(*MOBILE_WINDOW_SIZE)
+        self.setMinimumSize(*MOBILE_MINIMUM_WINDOW_SIZE)
 
         # remembered between launches (session length, task, Ultra Focus)
         self.settings = QSettings("Pawse", "Pawse")
@@ -165,7 +166,8 @@ class FocusWindow(QWidget):
         self.bar.setObjectName("sessionBar")
         self.bar.setTextVisible(False)
         self.bar.setRange(0, 1000)
-        self.bar.setMaximumWidth(250)
+        self.bar.setMinimumWidth(250)
+        self.bar.setMaximumWidth(310)
         body.addWidget(self.bar, 0, Qt.AlignHCenter)
         body.addSpacing(2)
 
