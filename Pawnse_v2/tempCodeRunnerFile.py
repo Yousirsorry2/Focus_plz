@@ -1,1 +1,0 @@
-make_paw_icon

@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QLineEdit, QPushButt
                                QWidget)
 from PySide6.QtWebEngineWidgets import QWebEngineView
 
-from core.config import load_config
+from PC.core.config import load_config
 from ui.mochi import MochiCat
 from ui.navigation import BottomNavigation
 from ui.tasks_theme import FULL_QSS

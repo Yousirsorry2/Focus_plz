@@ -9,12 +9,20 @@ PAWSE_DATA_DIR=<folder> keeps tasks.db / focus_nanny_config.json somewhere else.
 import datetime as dt
 import signal
 import sys
+from pathlib import Path
 
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
-from core.task_store import TaskStore, due_reminders
-from core.tracker import HAS_WIN32, START_ULTRA, Tracker
+APP_DIR = Path(__file__).resolve().parent
+REPO_DIR = APP_DIR.parent
+if str(APP_DIR) not in sys.path:
+    sys.path.insert(0, str(APP_DIR))
+if str(REPO_DIR) not in sys.path:
+    sys.path.append(str(REPO_DIR))
+
+from PC.core.task_store import TaskStore, due_reminders
+from PC.core.tracker import HAS_WIN32, START_ULTRA, Tracker
 from ui.focus_window import FocusWindow
 from ui.popup import MarkWorkDialog, alert_popup, checkin_popup
 from ui.tasks_view import TasksView

@@ -9,13 +9,12 @@ from PySide6.QtWidgets import (QButtonGroup, QDialog, QFrame, QHBoxLayout, QLabe
                                QMessageBox, QProgressBar, QPushButton, QScrollArea, QToolButton,
                                QVBoxLayout, QWidget)
 
-from core.task_store import parse_iso
+from PC.core.task_store import parse_iso
 from ui.add_task_dialog import AddTaskDialog
 from ui.tasks_theme import FULL_QSS
 from ui.theme import PEACH_HOVER, make_paw_icon
 from ui.widgets import PawCheck
 from ui.navigation import BottomNavigation
-from ui.mochi import MochiCat
 
 
 def _repolish(w):
@@ -156,82 +155,48 @@ class TasksView(QWidget):
         self.setWindowTitle("Pawse - My Tasks")
         self.setWindowIcon(make_paw_icon())
         self.setStyleSheet(FULL_QSS)
-        self.setFixedSize(1200, 760)
+        self.resize(390, 844)
+        self.setMinimumSize(320, 600)
         self._build()
         self.refresh()
 
     # ---- layout ---------------------------------------------------------------
     def _build(self):
-        outer = QHBoxLayout(self)
-        outer.setContentsMargins(0, 0, 0, 0)
-        outer.setSpacing(0)
-        self.navigation = BottomNavigation("Tasks", self)
-        self.navigation.selected.connect(self.navigation_requested.emit)
-        outer.addWidget(self.navigation)
-
-        main = QWidget()
-        outer.addWidget(main, 1)
-        main_row = QHBoxLayout(main)
-        main_row.setContentsMargins(34, 24, 34, 24)
-        main_row.setSpacing(22)
-        root = QVBoxLayout()
-        root.setContentsMargins(0, 0, 0, 0)
+        root = QVBoxLayout(self)
+        root.setContentsMargins(18, 18, 18, 0)
         root.setSpacing(0)
-        main_row.addLayout(root, 3)
-
-        overview = QFrame()
-        overview.setObjectName("softCard")
-        overview_col = QVBoxLayout(overview)
-        overview_col.setContentsMargins(18, 20, 18, 20)
-        overview_col.setSpacing(12)
-        eyebrow = QLabel("YOUR FOCUS")
-        eyebrow.setObjectName("sectionEyebrow")
-        overview_col.addWidget(eyebrow)
-        overview_col.addWidget(MochiCat("sleeping", width=190), 0, Qt.AlignHCenter)
-        overview_title = QLabel("One little win at a time.")
-        overview_title.setObjectName("cardTitle")
-        overview_title.setWordWrap(True)
-        overview_col.addWidget(overview_title)
-        self.overview_task = QLabel("Choose a task to focus on.")
-        self.overview_task.setObjectName("subtitle")
-        self.overview_task.setWordWrap(True)
-        overview_col.addWidget(self.overview_task)
-        overview_col.addStretch(1)
-        overview_note = QLabel("No rush. Make room for one little thing.")
-        overview_note.setObjectName("musicHint")
-        overview_note.setWordWrap(True)
-        overview_col.addWidget(overview_note)
-        main_row.addWidget(overview, 1)
 
         head = QVBoxLayout()
         head.setContentsMargins(0, 0, 0, 0)
-        head.setSpacing(0)
-        back = QPushButton("\u2190 Focus Mode")
-        back.setObjectName("linkButton")
-        back.setCursor(Qt.PointingHandCursor)
-        back.setFocusPolicy(Qt.NoFocus)
-        back.clicked.connect(self.back_requested.emit)
-        brow = QHBoxLayout()
-        brow.addWidget(back)
-        brow.addStretch()
-        head.addLayout(brow)
-        head.addSpacing(6)
+        head.setSpacing(8)
 
         trow = QHBoxLayout()
         title = QLabel("My Tasks \U0001F43E")
         title.setObjectName("title")
+        self.add_btn = QPushButton("+ Add a task")
+        self.add_btn.setObjectName("capsulePrimary")
+        self.add_btn.setCursor(Qt.PointingHandCursor)
+        self.add_btn.setFocusPolicy(Qt.NoFocus)
+        self.add_btn.clicked.connect(self.add_task)
         self.progress_label = QLabel("")
         self.progress_label.setObjectName("statusChip")
         trow.addWidget(title)
         trow.addStretch()
-        trow.addWidget(self.progress_label, 0, Qt.AlignVCenter)
+        trow.addWidget(self.add_btn)
         head.addLayout(trow)
-        head.addSpacing(12)
+        head.addSpacing(4)
+        summary = QHBoxLayout()
+        date_label = QLabel(dt.date.today().strftime("%A, %B %d"))
+        date_label.setObjectName("subtitle")
+        summary.addWidget(date_label)
+        summary.addStretch()
+        summary.addWidget(self.progress_label, 0, Qt.AlignVCenter)
+        head.addLayout(summary)
         self.bar = QProgressBar()
         self.bar.setObjectName("sessionBar")
         self.bar.setTextVisible(False)
         head.addWidget(self.bar)
-        head.addSpacing(14)
+        head.addSpacing(12)
         root.addLayout(head)
 
         # category chips (scroll sideways if the user adds many categories)
@@ -242,8 +207,8 @@ class TasksView(QWidget):
         self.chip_scroll.setFixedHeight(48)
         self.chip_host = QWidget()
         self.chip_lay = QHBoxLayout(self.chip_host)
-        self.chip_lay.setContentsMargins(28, 0, 28, 6)
-        self.chip_lay.setSpacing(8)
+        self.chip_lay.setContentsMargins(0, 0, 0, 6)
+        self.chip_lay.setSpacing(6)
         self.chip_scroll.setWidget(self.chip_host)
         root.addWidget(self.chip_scroll)
 
@@ -254,31 +219,29 @@ class TasksView(QWidget):
         self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         host = QWidget()
         self.list_lay = QVBoxLayout(host)
-        self.list_lay.setContentsMargins(24, 6, 24, 12)
+        self.list_lay.setContentsMargins(0, 4, 0, 12)
         self.list_lay.setSpacing(10)
         self.scroll.setWidget(host)
         root.addWidget(self.scroll, 1)
 
-        # bottom bar
+        # Keep the selected-task action above the fixed mobile tab bar.
         bar = QFrame()
         bar.setObjectName("taskBar")
-        bar.setFixedHeight(72)
+        bar.setFixedHeight(62)
         b = QHBoxLayout(bar)
-        b.setContentsMargins(24, 0, 24, 0)
-        b.setSpacing(12)
+        b.setContentsMargins(10, 6, 10, 6)
+        b.setSpacing(8)
         self.start_btn = QPushButton("Start Focus")
-        self.start_btn.setObjectName("capsule")
+        self.start_btn.setObjectName("capsulePrimary")
         self.start_btn.setToolTip("Select a task, then start a focus session on it")
-        self.add_btn = QPushButton("+ Add a task")
-        self.add_btn.setObjectName("capsulePrimary")
-        for btn in (self.start_btn, self.add_btn):
-            btn.setCursor(Qt.PointingHandCursor)
-            btn.setFocusPolicy(Qt.NoFocus)
+        self.start_btn.setCursor(Qt.PointingHandCursor)
+        self.start_btn.setFocusPolicy(Qt.NoFocus)
         self.start_btn.clicked.connect(self._start_focus)
-        self.add_btn.clicked.connect(self.add_task)
-        b.addWidget(self.start_btn, 4)
-        b.addWidget(self.add_btn, 5)
+        b.addWidget(self.start_btn, 1)
         root.addWidget(bar)
+        self.navigation = BottomNavigation("Tasks", self)
+        self.navigation.selected.connect(self.navigation_requested.emit)
+        root.addWidget(self.navigation)
 
     # ---- chips ---------------------------------------------------------------------
     def _sync_chips(self):
@@ -347,8 +310,6 @@ class TasksView(QWidget):
 
         if self.selected_id not in self.cards:
             self.selected_id = None
-        selected = self.store.get_task(self.selected_id) if self.selected_id else None
-        self.overview_task.setText(selected["title"] if selected else "Choose a task to focus on.")
         self._sync_start()
 
     def _add_card(self, task):
@@ -371,8 +332,6 @@ class TasksView(QWidget):
         self.selected_id = None if self.selected_id == task_id else task_id
         for tid, card in self.cards.items():
             card.set_selected(tid == self.selected_id)
-        task = self.store.get_task(self.selected_id) if self.selected_id else None
-        self.overview_task.setText(task["title"] if task else "Choose a task to focus on.")
         self._sync_start()
 
     def _sync_start(self):

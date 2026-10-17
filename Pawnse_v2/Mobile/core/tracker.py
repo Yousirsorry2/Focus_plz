@@ -24,7 +24,7 @@ from collections import deque
 
 from PySide6.QtCore import QObject, QTimer, Signal
 
-from core.config import load_config, save_config
+from PC.core.config import load_config, save_config
 
 try:  # Windows-only dependencies; the module still imports elsewhere for dev/testing
     import psutil
