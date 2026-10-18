@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (QButtonGroup, QDialog, QFrame, QHBoxLayout, QLabe
                                QMessageBox, QProgressBar, QPushButton, QScrollArea, QToolButton,
                                QVBoxLayout, QWidget)
 
-from PC.core.task_store import parse_iso
+from core.task_store import parse_iso
 from ui.add_task_dialog import AddTaskDialog
 from ui.tasks_theme import FULL_QSS
 from ui.theme import PEACH_HOVER, make_paw_icon

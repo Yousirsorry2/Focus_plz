@@ -13,8 +13,8 @@ import sys
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
-from PC.core.task_store import TaskStore, due_reminders
-from PC.core.tracker import HAS_WIN32, START_ULTRA, Tracker
+from core.task_store import TaskStore, due_reminders
+from core.tracker import HAS_WIN32, START_ULTRA, Tracker
 from ui.focus_window import FocusWindow
 from ui.popup import MarkWorkDialog, alert_popup, checkin_popup
 from ui.tasks_view import TasksView

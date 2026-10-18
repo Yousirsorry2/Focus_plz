@@ -10,7 +10,7 @@ import datetime as dt
 import sqlite3
 import json
 
-from PC.core.config import data_dir
+from core.config import data_dir
 
 DB_PATH = data_dir() / "tasks.db"
 

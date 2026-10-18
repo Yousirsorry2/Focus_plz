@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (QAbstractSpinBox, QButtonGroup, QCheckBox, QColor
                                QDialog, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
                                QSpinBox, QVBoxLayout, QWidget)
 
-from PC.core.task_store import DEFAULT_REMINDER_PRESETS, FREQUENCIES, SWATCHES, parse_iso
+from core.task_store import DEFAULT_REMINDER_PRESETS, FREQUENCIES, SWATCHES, parse_iso
 from ui.date_time_picker import DateTimeButton
 from ui.tasks_theme import FULL_QSS
 from ui.theme import COCOA

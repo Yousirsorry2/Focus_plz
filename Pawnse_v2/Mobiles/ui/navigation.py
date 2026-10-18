@@ -24,9 +24,19 @@ class BottomNavigation(QFrame):
             button.setObjectName("navTab")
             button.setProperty("tab", name)
             button.setToolTip(name)
-            button.setCheckable(True)
+            button.setCheckable(False)
             button.setChecked(name == active)
             button.setCursor(Qt.PointingHandCursor)
+            button.setFixedWidth(int(self.width() * 0.50))
+            button.setStyleSheet("""
+                QPushButton {
+                    background-color: blue;
+                    color: white;
+                }
+                QPushButton:hover {
+                    background-color: darkblue; /* เปลี่ยนสีตอนเมาส์ชี้ */
+                }
+            """)
             content = QVBoxLayout(button)
             content.setContentsMargins(0, 2, 0, 2)
             content.setSpacing(0)

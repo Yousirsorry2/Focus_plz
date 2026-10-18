@@ -96,7 +96,7 @@ class MusicView(_NavigationPage):
         self.player_stack.addWidget(self.web_player)
         player.addWidget(self.player_stack)
         player_caption = QLabel("A LITTLE BACKGROUND CALM")
-        player_caption.setWordWrap(True)
+        player_caption.setWordWrap(False)
         player.addWidget(player_caption, 0, Qt.AlignHCenter)
         self.player_title = QLabel("Made for your quiet moments")
         self.player_title.setObjectName("cardTitle")

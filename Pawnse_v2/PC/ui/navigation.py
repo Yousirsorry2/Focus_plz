@@ -26,7 +26,7 @@ class BottomNavigation(QFrame):
             button = QPushButton(f"{icon}     {name}")
             button.setObjectName("navTab")
             button.setProperty("tab", name)
-            button.setCheckable(True)
+            button.setCheckable(False)
             button.setChecked(name == active)
             button.setCursor(Qt.PointingHandCursor)
             button.clicked.connect(lambda _=False, tab=name: self.selected.emit(tab))
