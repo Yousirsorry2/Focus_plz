@@ -21,10 +21,12 @@ if str(APP_DIR) not in sys.path:
 if str(REPO_DIR) not in sys.path:
     sys.path.append(str(REPO_DIR))
 
-from PC.core.task_store import TaskStore, due_reminders
+from PC.core.task_store import TaskStore, due_reminders, parse_iso
 from PC.core.tracker import HAS_WIN32, START_ULTRA, Tracker
+from core.media_store import ensure_sound_effects
 from ui.focus_window import FocusWindow
-from ui.popup import MarkWorkDialog, alert_popup, checkin_popup
+from ui.popup import MarkWorkDialog, TaskAlertPopup, alert_popup, checkin_popup
+from ui.sound_effects import initialize_sound_effects
 from ui.tasks_view import TasksView
 from ui.theme import make_paw_icon
 from ui.utility_views import MusicView, SettingsView
@@ -38,6 +40,13 @@ class PawseApp:
         self.app.setApplicationName("Pawse")
         self.app.setQuitOnLastWindowClosed(False)   # closing the window keeps us in the tray
         self.popup = None
+        self._task_alert_popup = None
+        self._task_alert_queue = []
+        try:
+            ensure_sound_effects()
+        except OSError as error:
+            print(f"[Pawse audio] could not prepare local sound effects: {error}")
+        initialize_sound_effects()
 
         self.tracker = Tracker()
         self.window = FocusWindow()
@@ -186,31 +195,43 @@ class PawseApp:
                     if key in self._notified:
                         continue
                     self._notified.add(key)
-                    label, minutes = kind.split(":", 1)
-                    if label == "smart":
-                        text = (f"Smart Deadline: {task['title']} is due now."
-                                if minutes == "0" else
-                                f"Smart Deadline: {task['title']} is due in {self._duration_text(int(minutes))}.")
-                    else:
-                        text = (f"Time for: {task['title']}" if minutes == "0" else
-                                f"Reminder: {task['title']} is due in {self._duration_text(int(minutes))}.")
-                    self.tray.showMessage("Pawse", text, QSystemTrayIcon.Information, 6000)
+                    label = kind.split(":", 1)[0]
+                    scheduled_at = parse_iso(
+                        task.get("deadline_time") if label == "smart" else task.get("start_time"))
+                    if scheduled_at and label != "smart":
+                        scheduled_at = now.replace(
+                            hour=scheduled_at.hour, minute=scheduled_at.minute,
+                            second=0, microsecond=0)
+                    event_time = (scheduled_at.strftime("%A, %b %d at %I:%M %p")
+                                  if scheduled_at else "Scheduled time unavailable")
+                    self._task_alert_queue.append((task["title"], event_time))
         except Exception as e:      # a bad row must never stop the app
             print(f"[Pawse reminders] {e}")
+        self._show_next_task_alert()
 
-    @staticmethod
-    def _duration_text(minutes):
-        if minutes % 1440 == 0:
-            days = minutes // 1440
-            return f"{days} day" + ("" if days == 1 else "s")
-        if minutes % 60 == 0:
-            hours = minutes // 60
-            return f"{hours} hour" + ("" if hours == 1 else "s")
-        return f"{minutes} minutes"
+    def _show_next_task_alert(self):
+        if self._task_alert_popup is not None or not self._task_alert_queue:
+            return
+        title, event_time = self._task_alert_queue.pop(0)
+        self._task_alert_popup = TaskAlertPopup(title, event_time, self.window)
+        self._task_alert_popup.finished.connect(self._on_task_alert_closed)
+        self._task_alert_popup.show()
+        self._task_alert_popup.raise_()
+        self._task_alert_popup.activateWindow()
+
+    def _on_task_alert_closed(self, _result):
+        self._task_alert_popup = None
+        QTimer.singleShot(0, self._show_next_task_alert)
 
     # ---- run ---------------------------------------------------------------------------
     def quit(self):
         self.tracker.stop()
+        self._reminder_timer.stop()
+        self._task_alert_queue.clear()
+        if self._task_alert_popup is not None:
+            self._task_alert_popup.finished.disconnect(self._on_task_alert_closed)
+            self._task_alert_popup.close()
+            self._task_alert_popup = None
         if self.popup is not None:
             self.popup.hide()
         self.tray.hide()

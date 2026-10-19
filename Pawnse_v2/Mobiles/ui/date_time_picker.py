@@ -176,7 +176,7 @@ class TimeSelector(QWidget):
         self.label.setAlignment(Qt.AlignCenter)
         self.label.setFixedWidth(34)
 
-        for button, delta in ((previous, -1), (following, 1)):
+        for button, delta in ((previous, 1), (following, -1)):
             button.setObjectName("timeStep")
             button.setCursor(Qt.PointingHandCursor)
             button.setFixedWidth(34)  # กำหนดความกว้างให้เท่ากับ label (34px)

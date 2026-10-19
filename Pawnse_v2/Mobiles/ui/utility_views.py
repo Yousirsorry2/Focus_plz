@@ -1,18 +1,25 @@
 """Music and Settings destinations for the shared desktop navigation."""
 
 import json
+import shutil
+from pathlib import Path
 from urllib.parse import parse_qs, quote, urlsplit
 
 from PySide6.QtCore import QSettings, Qt, Signal, QUrl
 from PySide6.QtGui import QFontMetrics
-from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QLineEdit, QPushButton,
-                               QRadioButton, QScrollArea, QStackedWidget,
-                               QSizePolicy, QVBoxLayout, QWidget)
+from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
+from PySide6.QtMultimediaWidgets import QVideoWidget
+from PySide6.QtWidgets import (QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
+                               QPushButton, QRadioButton, QScrollArea, QSlider,
+                               QStackedWidget, QSizePolicy, QVBoxLayout, QWidget)
 from PySide6.QtWebEngineWidgets import QWebEngineView
 
-from PC.core.config import load_config
+from core.media_store import (PLAYABLE_MEDIA_EXTENSIONS, ensure_default_track,
+                              music_directory)
+from core.config import load_config
 from ui.mochi import MochiCat
 from ui.navigation import BottomNavigation
+from ui.sound_effects import play_sound_effect
 from ui.tasks_theme import FULL_QSS
 from ui.theme import MOBILE_MINIMUM_WINDOW_SIZE, MOBILE_WINDOW_SIZE, make_paw_icon
 
@@ -55,6 +62,8 @@ class MusicView(_NavigationPage):
         self.status.setObjectName("musicStatus")
         self.now_playing = QLabel("Choose a saved link to play it here.")
         self.now_playing.setObjectName("musicHint")
+        self.media_dir = music_directory()
+        self.current_media_path = None
 
         eyebrow = QLabel("YOUR CALM LITTLE CORNER / MUSIC")
         eyebrow.setObjectName("sectionEyebrow")
@@ -80,7 +89,7 @@ class MusicView(_NavigationPage):
         player.setSpacing(8)
         self.player_stack = QStackedWidget()
         self.player_stack.setMinimumHeight(190)
-        self.player_stack.setMaximumHeight(210)
+        self.player_stack.setMaximumHeight(250)
         self.player_stack.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.player_placeholder = QWidget()
         placeholder = QVBoxLayout(self.player_placeholder)
@@ -92,8 +101,45 @@ class MusicView(_NavigationPage):
         self.web_player.setMaximumHeight(210)
         self.web_player.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
         self.web_player.loadFinished.connect(self._on_player_load_finished)
+        self.local_player_view = QWidget()
+        local_player = QVBoxLayout(self.local_player_view)
+        local_player.setContentsMargins(0, 0, 0, 0)
+        local_player.setSpacing(4)
+        self.local_video = QVideoWidget()
+        self.local_video.setMinimumHeight(100)
+        self.local_video.setMaximumHeight(140)
+        self.media_player = QMediaPlayer(self)
+        self.audio_output = QAudioOutput(self)
+        self.media_player.setAudioOutput(self.audio_output)
+        self.media_player.setVideoOutput(self.local_video)
+        
+        self.media_player.positionChanged.connect(self._on_media_position)
+        self.media_player.durationChanged.connect(self._on_media_duration)
+        self.media_player.playbackStateChanged.connect(self._on_media_state)
+        self.media_player.errorOccurred.connect(self._on_media_error)
+        local_player.addWidget(self.local_video)
+        self.local_track_label = QLabel("Choose a local track")
+        self.local_track_label.setObjectName("musicHint")
+        self.local_track_label.setWordWrap(True)
+        local_player.addWidget(self.local_track_label)
+        controls = QHBoxLayout()
+        controls.setSpacing(8)
+        self.local_play_button = QPushButton("Play")
+        self.local_play_button.setObjectName("providerButton")
+        self.local_play_button.clicked.connect(self._toggle_local_playback)
+        self.local_stop_button = QPushButton("Stop")
+        self.local_stop_button.setObjectName("providerButton")
+        self.local_stop_button.clicked.connect(self.media_player.stop)
+        controls.addWidget(self.local_play_button)
+        controls.addWidget(self.local_stop_button)
+        self.media_progress = QSlider(Qt.Horizontal)
+        self.media_progress.setRange(0, 0)
+        self.media_progress.sliderMoved.connect(self.media_player.setPosition)
+        controls.addWidget(self.media_progress, 1)
+        local_player.addLayout(controls)
         self.player_stack.addWidget(self.player_placeholder)
         self.player_stack.addWidget(self.web_player)
+        self.player_stack.addWidget(self.local_player_view)
         player.addWidget(self.player_stack)
         player_caption = QLabel("A LITTLE BACKGROUND CALM")
         player_caption.setWordWrap(False)
@@ -113,13 +159,25 @@ class MusicView(_NavigationPage):
         library_col = QVBoxLayout(library)
         library_col.setContentsMargins(16, 16, 16, 16)
         library_col.setSpacing(10)
-        eyebrow = QLabel("YOUR PLAYLISTS")
+        eyebrow = QLabel("YOUR MUSIC LIBRARY")
         eyebrow.setObjectName("sectionEyebrow")
         library_col.addWidget(eyebrow)
-        library_title = QLabel("Bring your own music")
+        library_title = QLabel("Local media & playlists")
         library_title.setObjectName("cardTitle")
         library_title.setWordWrap(True)
         library_col.addWidget(library_title)
+        self.upload_button = QPushButton("+  Upload Media")
+        self.upload_button.setObjectName("capsulePrimary")
+        self.upload_button.setCursor(Qt.PointingHandCursor)
+        self.upload_button.clicked.connect(self.upload_media)
+        library_col.addWidget(self.upload_button)
+        self.media_list = QVBoxLayout()
+        self.media_list.setContentsMargins(0, 4, 0, 4)
+        self.media_list.setSpacing(8)
+        library_col.addLayout(self.media_list)
+        online_title = QLabel("Online playlists")
+        online_title.setObjectName("fieldTitle")
+        library_col.addWidget(online_title)
         self.link_input = QLineEdit()
         self.link_input.setObjectName("musicLink")
         self.link_input.setPlaceholderText("Paste a YouTube or Spotify playlist link")
@@ -163,7 +221,151 @@ class MusicView(_NavigationPage):
         library_col.addWidget(playlist_scroll)
         content.addWidget(library)
         self.root.addLayout(content)
+        try:
+            ensure_default_track()
+        except OSError as error:
+            self.status.setText(f"Could not prepare the local music library: {error}")
+        self._render_media()
         self._render_playlists()
+
+    def upload_media(self):
+        files, _ = QFileDialog.getOpenFileNames(
+            self, "Upload music or video", "",
+            "Media files (*.mp3 *.mp4);;MP3 audio (*.mp3);;MP4 video (*.mp4)")
+        if not files:
+            return
+
+        copied = 0
+        failures = []
+        try:
+            self.media_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as error:
+            self.status.setText(f"Could not access the local music library: {error}")
+            return
+        for filename in files:
+            source = Path(filename)
+            if source.suffix.lower() not in PLAYABLE_MEDIA_EXTENSIONS:
+                failures.append(f"{source.name}: unsupported file type")
+                continue
+            try:
+                if not source.is_file():
+                    raise OSError("The selected file is no longer available.")
+                target = self._available_media_path(source)
+                if target.resolve() == source.resolve():
+                    continue
+                shutil.copy2(source, target)
+                copied += 1
+            except OSError as error:
+                failures.append(f"{source.name}: {error}")
+
+        if not self._render_media():
+            return
+        if failures:
+            self.status.setText("Uploaded " + str(copied) + " file(s). " + "; ".join(failures))
+        elif copied:
+            self.status.setText(f"Uploaded {copied} file(s) to your local music library.")
+        else:
+            self.status.setText("Those files are already in your local music library.")
+
+    def _available_media_path(self, source):
+        target = self.media_dir / source.name
+        if not target.exists():
+            return target
+        if target.resolve() == source.resolve():
+            return target
+        index = 2
+        while True:
+            target = self.media_dir / f"{source.stem} ({index}){source.suffix}"
+            if not target.exists():
+                return target
+            index += 1
+
+    def _render_media(self):
+        while self.media_list.count():
+            item = self.media_list.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+        try:
+            self.media_dir.mkdir(parents=True, exist_ok=True)
+            files = sorted(
+                (path for path in self.media_dir.iterdir()
+                 if path.is_file() and path.stat().st_size > 0
+                 and path.suffix.lower() in PLAYABLE_MEDIA_EXTENSIONS),
+                key=lambda path: path.name.lower())
+        except OSError as error:
+            self.status.setText(f"Could not read the local music library: {error}")
+            return False
+        if not files:
+            empty = QLabel("Upload an MP3 or MP4 to start your offline library.")
+            empty.setObjectName("musicHint")
+            empty.setWordWrap(True)
+            self.media_list.addWidget(empty)
+            return True
+
+        for path in files:
+            row = QFrame()
+            row.setObjectName("dashboardCard")
+            layout = QHBoxLayout(row)
+            layout.setContentsMargins(8, 6, 6, 6)
+            layout.setSpacing(6)
+            label = QLabel(path.name)
+            label.setObjectName("fieldTitle")
+            label.setWordWrap(True)
+            label.setToolTip(str(path))
+            layout.addWidget(label, 1)
+            play = QPushButton("Play")
+            play.setObjectName("playlistPlay")
+            play.setCursor(Qt.PointingHandCursor)
+            play.setFixedWidth(64)
+            play.clicked.connect(lambda _=False, media=path: self._play_local_media(media))
+            layout.addWidget(play)
+            self.media_list.addWidget(row)
+        return True
+
+    def _play_local_media(self, path):
+        path = Path(path)
+        if not path.is_file():
+            self.status.setText(f"Could not find local media: {path}")
+            return
+        self.current_media_path = path
+        is_video = path.suffix.lower() == ".mp4"
+        self.local_video.setVisible(is_video)
+        self.local_track_label.setText(path.name)
+        self.now_playing.setText("Playing from your offline library.")
+        self.player_title.setText("Local playback")
+        self.player_stack.setCurrentWidget(self.local_player_view)
+        self.media_player.setSource(QUrl.fromLocalFile(str(path.resolve())))
+        self.media_player.play()
+        self.status.setText(f"Playing {path.name}.")
+
+    def _toggle_local_playback(self):
+        if self.media_player.playbackState() == QMediaPlayer.PlayingState:
+            self.media_player.pause()
+        elif self.current_media_path is not None:
+            self.media_player.play()
+        else:
+            files = sorted(
+                (path for path in self.media_dir.iterdir()
+                 if path.is_file() and path.stat().st_size > 0
+                 and path.suffix.lower() in PLAYABLE_MEDIA_EXTENSIONS),
+                key=lambda path: path.name.lower())
+            if files:
+                self._play_local_media(files[0])
+
+    def _on_media_position(self, position):
+        if not self.media_progress.isSliderDown():
+            self.media_progress.setValue(position)
+
+    def _on_media_duration(self, duration):
+        self.media_progress.setRange(0, duration)
+
+    def _on_media_state(self, state):
+        self.local_play_button.setText(
+            "Pause" if state == QMediaPlayer.PlayingState else "Play")
+
+    def _on_media_error(self, _error, message):
+        self.status.setText(f"Could not play this media file: {message}")
 
     def _set_provider(self, provider):
         example = ("https://www.youtube.com/playlist?list=" if provider == "YouTube"

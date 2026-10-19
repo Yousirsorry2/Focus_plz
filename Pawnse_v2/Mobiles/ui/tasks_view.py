@@ -16,6 +16,7 @@ from ui.theme import (MOBILE_MINIMUM_WINDOW_SIZE, MOBILE_WINDOW_SIZE, PEACH_HOVE
                       make_paw_icon)
 from ui.widgets import PawCheck
 from ui.navigation import BottomNavigation
+from ui.sound_effects import play_sound_effect
 
 
 def _repolish(w):
@@ -343,18 +344,21 @@ class TasksView(QWidget):
     # ---- actions (each one hits the database immediately) -----------------------------------
     def _toggle(self, task_id, done):
         self.store.set_completed(task_id, done)
+        play_sound_effect("task_click")
         self._later()
 
     def add_task(self):
         dlg = AddTaskDialog(self.store, parent=self)
         if dlg.exec() == QDialog.Accepted and dlg.task_data():
             self.store.add_task(**dlg.task_data())
+            play_sound_effect("task_click")
         self._later()          # categories may have been added even if the sheet was cancelled
 
     def edit_task(self, task_id):
         task = self.store.get_task(task_id)
         if not task:
             return
+        play_sound_effect("edit_click")
         dlg = AddTaskDialog(self.store, task=task, parent=self)
         if dlg.exec() == QDialog.Accepted and dlg.task_data():
             self.store.update_task(task_id, **dlg.task_data())

@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (QApplication, QDialog, QFrame, QGraphicsDropShado
                                QWidget)
 
 from ui.mochi import MochiCat
+from ui.sound_effects import play_sound_effect
 from ui.tasks_theme import FULL_QSS
 from ui.theme import COCOA
 
@@ -33,6 +34,7 @@ class PawsePopup(QWidget):
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_ShowWithoutActivating)
+        play_sound_effect("meow_warning")
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(18, 12, 18, 24)   # room for the shadow
@@ -133,6 +135,87 @@ class PawsePopup(QWidget):
         if cb:
             cb()
 
+class TaskAlertPopup(QDialog):
+    """Modal, branded reminder for a scheduled task or deadline, positioned at the bottom-right corner."""
+
+    def __init__(self, task: str, event_time: str, parent=None):
+        super().__init__(parent)
+        self.setObjectName("taskAlertPopup")
+        self.setWindowTitle("Mochi Reminder")
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
+        self.setWindowModality(Qt.ApplicationModal)
+        self.setStyleSheet(FULL_QSS)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setAttribute(Qt.WA_DeleteOnClose)
+
+        play_sound_effect("meow_warning")
+
+        # 1. Layout ชั้นนอกสำหรับเว้นพื้นที่ให้เงา (Drop Shadow)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(18, 12, 18, 24)
+
+        # 2. การ์ดหลักทรงขอบมนพร้อมใส่เงา
+        card = QFrame()
+        card.setObjectName("card")
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(32)
+        shadow.setOffset(0, 6)
+        shadow.setColor(QColor(74, 64, 58, 70))
+        card.setGraphicsEffect(shadow)
+        outer.addWidget(card)
+
+        # 3. Layout ภายในตัวการ์ดสำหรับใส่ข้อความและปุ่มกด
+        lay = QVBoxLayout(card)
+        lay.setContentsMargins(22, 18, 22, 20)
+        lay.setSpacing(10)
+
+        badge = QLabel("Mochi Reminder  \U0001F43E")
+        badge.setObjectName("taskAlertBadge")
+        badge.setAlignment(Qt.AlignCenter)
+        lay.addWidget(badge)
+
+        lay.addWidget(MochiCat("sleeping", width=155), 0, Qt.AlignHCenter)
+
+        heading = QLabel("A little task is due")
+        heading.setObjectName("taskAlertHeading")
+        heading.setAlignment(Qt.AlignCenter)
+        lay.addWidget(heading)
+
+        task_label = QLabel(task)
+        task_label.setObjectName("taskAlertTask")
+        task_label.setAlignment(Qt.AlignCenter)
+        task_label.setWordWrap(True)
+        lay.addWidget(task_label)
+
+        time_label = QLabel(event_time)
+        time_label.setObjectName("taskAlertTime")
+        time_label.setAlignment(Qt.AlignCenter)
+        time_label.setWordWrap(True)
+        lay.addWidget(time_label)
+
+        dismiss = QPushButton("OK / Dismiss")
+        dismiss.setObjectName("taskAlertDismiss")
+        dismiss.setCursor(Qt.PointingHandCursor)
+        dismiss.clicked.connect(self.accept)
+        lay.addSpacing(2)
+        lay.addWidget(dismiss)
+
+        # 4. คำนวณขนาดความกว้าง/ความสูง และคำนวณตำแหน่งพิกัดไปมุมขวาล่าง
+        screen = QApplication.primaryScreen().availableGeometry()
+        width = min(370, screen.width() - 16)
+        self.setFixedWidth(width)
+        self.setFixedHeight(outer.totalHeightForWidth(width))
+        self.move(screen.right() - self.width() - 4, screen.bottom() - self.height() - 4)
+
+        # 5. เพิ่มแอนิเมชัน Fade-In ค่อยๆ สว่างขึ้น
+        self.setWindowOpacity(0.0)
+        self.show()
+        self.raise_()
+        self._fade = QPropertyAnimation(self, b"windowOpacity", self)
+        self._fade.setDuration(180)
+        self._fade.setStartValue(0.0)
+        self._fade.setEndValue(1.0)
+        self._fade.start()
 
 class MarkWorkDialog(QDialog):
     def __init__(self, target: str, parent=None):

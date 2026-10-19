@@ -148,6 +148,26 @@ QPushButton#swatchMore {{
 }}
 
 /* ---------- Focus Guard: Mark as Work ---------- */
+QDialog#taskAlertPopup {{
+    background: {CREAM}; border: 2px solid {PEACH}; border-radius: 24px;
+}}
+QLabel#taskAlertBadge {{
+    background: {PEACH}; border-radius: 14px; padding: 7px 12px;
+    font-size: 13px; font-weight: 700;
+}}
+QLabel#taskAlertHeading {{ font-size: 15px; color: {COCOA_SOFT}; font-weight: 600; }}
+QLabel#taskAlertTask {{ font-size: 21px; font-weight: 700; }}
+QLabel#taskAlertTime {{
+    background: rgba(200,230,201,0.48); border-radius: 12px;
+    padding: 9px 12px; font-size: 13px; font-weight: 600;
+}}
+QPushButton#taskAlertDismiss {{
+    background: {PEACH}; border: 1px solid {PEACH}; border-radius: 22px;
+    min-height: 46px; padding: 0 24px; font-size: 15px; font-weight: 700;
+}}
+QPushButton#taskAlertDismiss:hover {{ background: {PEACH_HOVER}; }}
+QPushButton#taskAlertDismiss:pressed {{ background: {PEACH_PRESS}; }}
+
 QPushButton#popupWork {{
     background: {MINT}; border: 1px solid {MINT};
     min-height: 32px; border-radius: 16px; padding: 0 14px; font-size: 12px;

@@ -15,6 +15,7 @@ from ui.tasks_theme import FULL_QSS
 from ui.theme import (COCOA, MINT, MOBILE_MINIMUM_WINDOW_SIZE, MOBILE_WINDOW_SIZE,
                       make_paw_icon)
 from ui.navigation import BottomNavigation
+from ui.sound_effects import play_sound_effect
 
 SESSION_MINUTES = 25
 MIN_MINUTES, MAX_MINUTES = 1, 180
@@ -264,6 +265,7 @@ class FocusWindow(QWidget):
         self.toggle_pause()                   # paused -> running
 
     def toggle_pause(self):
+        play_sound_effect("focus_click")
         if self.state == "running":
             self._set_state("paused")
         elif self.state == "paused":
