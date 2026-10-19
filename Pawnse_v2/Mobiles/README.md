@@ -6,7 +6,10 @@
     python main.py
 
 Test mode: tick "Ultra Focus" in the window (reminders ~10x faster). `set PAWSE_TEST_MODE=1` starts with it on.
-Data lives next to the app (`tasks.db`, `focus_nanny_config.json`); set `PAWSE_DATA_DIR` to move it.
+Data is stored locally under `%LOCALAPPDATA%\Pawse` on Windows; set
+`PAWSE_DATA_DIR` to choose another location. Tasks, categories, reminders, and
+Focus Guard rules are persisted in `tasks.db` (the JSON config remains for
+compatibility with the standalone Focus Guard).
 
 ## Layout
     main.py                    startup, four-tab navigation, tray notifications
@@ -26,10 +29,12 @@ Data lives next to the app (`tasks.db`, `focus_nanny_config.json`); set `PAWSE_D
     ui/tasks_theme.py          shared application QSS additions
     ui/mochi.py, ui/theme.py   Mochi illustration and palette
 
-The app opens to **Tasks** in a 390 × 844 mobile-style layout with a persistent
-bottom tab bar. Task lists and long forms scroll vertically; date and time are
-edited in separate custom dialogs. Task dates, reminder selections, and saved
-custom presets are stored locally. Scheduled task reminders use a separate
+The app opens to **Tasks** in a 390 × 760 mobile-style layout with a persistent
+bottom tab bar; Tasks, Focus, Music, and Settings switch inside one window.
+Task lists and long forms scroll vertically; date and time are edited in
+separate custom dialogs. Categories can be added or deleted from the task
+sheet; deleting a category moves its tasks to Personal. Task dates, reminder
+selections, and saved custom presets are stored locally. Scheduled task reminders use a separate
 frameless Mochi modal showing the task and its event time.
 Smart Deadline tasks schedule all nine milestone reminders. Focus Guard work
 exceptions require confirmation and can be temporary (25 minutes) or permanent;
@@ -39,8 +44,8 @@ The Music page imports MP3 audio and MP4 video into `PAWSE_DATA_DIR/music` for
 offline playback. If that directory has no playable media, Pawse copies its
 built-in cozy ambient MP3 there. Focus Guard and key task/focus interactions use
 local WAV effects in `PAWSE_DATA_DIR/sfx`, generating gentle defaults when the
-files are missing. Both folders remain alongside the app when `PAWSE_DATA_DIR`
-is not set.
+files are missing. Local playback includes a volume control, mute toggle, and
+track loop. Both folders are stored under the selected Pawse data directory.
 
 YouTube playlist/video links and Spotify playlist/track links are still
 supported and saved locally, with playback embedded through Qt WebEngine.

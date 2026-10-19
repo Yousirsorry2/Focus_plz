@@ -24,7 +24,7 @@ from collections import deque
 
 from PySide6.QtCore import QObject, QTimer, Signal
 
-from PC.core.config import load_config, save_config
+from core.config import load_config, save_config
 
 try:  # Windows-only dependencies; the module still imports elsewhere for dev/testing
     import psutil
@@ -109,7 +109,10 @@ HARD_BLOCKED_TERMS = {
     "steam", "epic games", "riot client", "battle.net", "ea app", "valorant",
     "league of legends", "roblox", "genshin", "honkai", "minecraft", "rov", "pubg",
     "free fire", "mobile legends", "fortnite", "garena", "y8.com", "poki.com",
-    "itch.io", "crazygames", "tiktok", "netflix",
+    "itch.io", "crazygames", "tiktok", "netflix", "youtube", "facebook",
+    "instagram", "snapchat", "reddit", "threads", "pinterest", "twitter",
+    " / x", "twitch", "discord", "disney+", "disneyplus", "bilibili",
+    "wetv", "iqiyi", "viu", "crunchyroll", "hbo max", "prime video", "vimeo",
 }
 
 strong_keywords = [
@@ -482,6 +485,8 @@ class Tracker(QObject):
                 if ttype == "site":
                     _add_unique(cfg["removed_distraction_sites"], raw)
             save_config(cfg)
+            if hasattr(self, "rule_store"):
+                self.rule_store.save_focus_rules(cfg)
             if ttype == "process":
                 distraction_processes.discard(raw)
                 user_work_processes.add(raw)
@@ -523,6 +528,8 @@ class Tracker(QObject):
             _add_unique(cfg[target_list], value)
             _add_unique(cfg[manual_list], value)
         save_config(cfg)
+        if hasattr(self, "rule_store"):
+            self.rule_store.save_focus_rules(cfg)
         if is_process:
             if blocked:
                 manual_work_processes.discard(value)

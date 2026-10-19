@@ -2,6 +2,7 @@
 
 import json
 import shutil
+import sqlite3
 from pathlib import Path
 from urllib.parse import parse_qs, quote, urlsplit
 
@@ -30,6 +31,7 @@ class _NavigationPage(QWidget):
     def __init__(self, active):
         super().__init__()
         self.setObjectName("TasksWindow")
+        self.setAttribute(Qt.WA_StyledBackground, True)
         self.setWindowTitle(f"Pawse - {active}")
         self.setWindowIcon(make_paw_icon())
         self.setStyleSheet(FULL_QSS)
@@ -137,6 +139,31 @@ class MusicView(_NavigationPage):
         self.media_progress.sliderMoved.connect(self.media_player.setPosition)
         controls.addWidget(self.media_progress, 1)
         local_player.addLayout(controls)
+        audio_controls = QHBoxLayout()
+        self.volume_button = QPushButton("Mute")
+        self.volume_button.setObjectName("providerButton")
+        self.volume_button.setCheckable(True)
+        self.volume_button.toggled.connect(self._toggle_mute)
+        audio_controls.addWidget(self.volume_button)
+        self.volume_slider = QSlider(Qt.Horizontal)
+        self.volume_slider.setObjectName("musicVolume")
+        self.volume_slider.setRange(0, 100)
+        self.volume_slider.setMinimumWidth(60)
+        self.volume_slider.setToolTip("Volume")
+        try:
+            volume = max(0, min(100, int(self.settings.value("music_volume", 70))))
+        except (TypeError, ValueError):
+            volume = 70
+        self.volume_slider.setValue(volume)
+        self.audio_output.setVolume(volume / 100)
+        self.volume_slider.valueChanged.connect(self._set_volume)
+        audio_controls.addWidget(self.volume_slider, 1)
+        self.loop_button = QPushButton("Loop track")
+        self.loop_button.setObjectName("providerButton")
+        self.loop_button.setCheckable(True)
+        self.loop_button.toggled.connect(self._toggle_loop)
+        audio_controls.addWidget(self.loop_button)
+        local_player.addLayout(audio_controls)
         self.player_stack.addWidget(self.player_placeholder)
         self.player_stack.addWidget(self.web_player)
         self.player_stack.addWidget(self.local_player_view)
@@ -323,7 +350,7 @@ class MusicView(_NavigationPage):
             self.media_list.addWidget(row)
         return True
 
-    def _play_local_media(self, path):
+    def _play_local_media(self, path, autoplay=True):
         path = Path(path)
         if not path.is_file():
             self.status.setText(f"Could not find local media: {path}")
@@ -336,8 +363,24 @@ class MusicView(_NavigationPage):
         self.player_title.setText("Local playback")
         self.player_stack.setCurrentWidget(self.local_player_view)
         self.media_player.setSource(QUrl.fromLocalFile(str(path.resolve())))
-        self.media_player.play()
-        self.status.setText(f"Playing {path.name}.")
+        if autoplay:
+            self.media_player.play()
+            self.status.setText(f"Playing {path.name}.")
+        else:
+            self.status.setText(f"{path.name} is ready to play.")
+
+    def _set_volume(self, value):
+        self.audio_output.setVolume(value / 100)
+        self.settings.setValue("music_volume", value)
+        self.settings.sync()
+
+    def _toggle_mute(self, muted):
+        self.audio_output.setMuted(muted)
+        self.volume_button.setText("Unmute" if muted else "Mute")
+
+    def _toggle_loop(self, enabled):
+        loops = QMediaPlayer.Loops.Infinite if enabled else QMediaPlayer.Loops.Once
+        self.media_player.setLoops(loops)
 
     def _toggle_local_playback(self):
         if self.media_player.playbackState() == QMediaPlayer.PlayingState:
@@ -600,7 +643,7 @@ class SettingsView(_NavigationPage):
             return
         try:
             self.tracker.add_manual_target(value, blocked=self.block.isChecked())
-        except OSError as error:
+        except (OSError, sqlite3.Error) as error:
             self.status.setText(f"Could not save the rule: {error}")
             return
         self.rule_input.clear()
@@ -608,7 +651,8 @@ class SettingsView(_NavigationPage):
         self._refresh_rules()
 
     def _refresh_rules(self):
-        cfg = load_config()
+        cfg = (self.tracker.rule_store.focus_rules()
+               if hasattr(self.tracker, "rule_store") else load_config())
         allowed = cfg.get("productive_processes", []) + cfg.get("productive_keywords", [])
         blocked = (cfg.get("custom_distraction_processes", []) +
                    cfg.get("custom_distraction_sites", []))

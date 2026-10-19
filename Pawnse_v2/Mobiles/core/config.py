@@ -11,12 +11,21 @@ import os
 import tempfile
 from pathlib import Path
 
-
 def data_dir() -> Path:
     env = os.environ.get("PAWSE_DATA_DIR")
-    d = Path(env) if env else Path(__file__).resolve().parent.parent
+    local_appdata = os.environ.get("LOCALAPPDATA")
+    if env:
+        d = Path(env)
+    elif local_appdata:
+        # ดึงตำแหน่ง AppData/Local ของ Windows
+        d = Path(local_appdata) / "Pawse"
+    else:
+        # Fallback กรณีระบบอื่น
+        d = Path.home() / ".pawse"
+
     d.mkdir(parents=True, exist_ok=True)
     return d
+
 
 
 CONFIG_PATH = data_dir() / "focus_nanny_config.json"

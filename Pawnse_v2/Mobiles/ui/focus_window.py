@@ -79,6 +79,9 @@ class FocusWindow(QWidget):
     def __init__(self, task=None, minutes=None):
         super().__init__()
         self.setObjectName("FocusWindow")
+        
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        
         self.setWindowTitle("Pawse - Focus Mode")
         self.setWindowIcon(make_paw_icon())
         self.setStyleSheet(FULL_QSS)

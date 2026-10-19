@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (QButtonGroup, QDialog, QFrame, QHBoxLayout, QLabe
                                QMessageBox, QProgressBar, QPushButton, QScrollArea, QToolButton,
                                QVBoxLayout, QWidget)
 
-from PC.core.task_store import parse_iso
+from core.task_store import parse_iso
 from ui.add_task_dialog import AddTaskDialog
 from ui.tasks_theme import FULL_QSS
 from ui.theme import (MOBILE_MINIMUM_WINDOW_SIZE, MOBILE_WINDOW_SIZE, PEACH_HOVER,
@@ -154,6 +154,9 @@ class TasksView(QWidget):
         self._chip_names = []
 
         self.setObjectName("TasksWindow")
+        
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        
         self.setWindowTitle("Pawse - My Tasks")
         self.setWindowIcon(make_paw_icon())
         self.setStyleSheet(FULL_QSS)

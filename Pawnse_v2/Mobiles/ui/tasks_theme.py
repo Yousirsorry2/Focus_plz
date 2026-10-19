@@ -86,6 +86,15 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
 QScrollBar:horizontal {{ background: transparent; height: 8px; margin: 2px; }}
 QScrollBar::handle:horizontal {{ background: rgba(74,64,58,0.22); border-radius: 3px; min-width: 28px; }}
 QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{ width: 0; }}
+QSlider#musicVolume::groove:horizontal {{
+    height: 6px; background: rgba(74,64,58,0.12); border-radius: 3px;
+}}
+QSlider#musicVolume::sub-page:horizontal {{ background: {MINT}; border-radius: 3px; }}
+QSlider#musicVolume::handle:horizontal {{
+    width: 14px; margin: -5px 0; background: {PEACH};
+    border: 1px solid {COCOA_LINE}; border-radius: 7px;
+}}
+QPushButton#providerButton:checked {{ background: {MINT}; border-color: {MINT}; }}
 
 QMenu {{ background: {CREAM}; border: 1px solid {COCOA_LINE}; border-radius: 10px; padding: 4px; }}
 QMenu::item {{ padding: 6px 20px; border-radius: 6px; }}

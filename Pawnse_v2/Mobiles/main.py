@@ -7,12 +7,13 @@ PAWSE_DATA_DIR=<folder> keeps tasks.db / focus_nanny_config.json somewhere else.
 """
 
 import datetime as dt
+import sqlite3
 import signal
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QTimer
-from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
+from PySide6.QtCore import QEvent, QTimer, Signal
+from PySide6.QtWidgets import QApplication, QMenu, QStackedWidget, QSystemTrayIcon
 
 APP_DIR = Path(__file__).resolve().parent
 REPO_DIR = APP_DIR.parent
@@ -21,17 +22,35 @@ if str(APP_DIR) not in sys.path:
 if str(REPO_DIR) not in sys.path:
     sys.path.append(str(REPO_DIR))
 
-from PC.core.task_store import TaskStore, due_reminders, parse_iso
-from PC.core.tracker import HAS_WIN32, START_ULTRA, Tracker
+from core.task_store import TaskStore, due_reminders, parse_iso
+from core.tracker import HAS_WIN32, START_ULTRA, Tracker, apply_user_config
 from core.media_store import ensure_sound_effects
 from ui.focus_window import FocusWindow
 from ui.popup import MarkWorkDialog, TaskAlertPopup, alert_popup, checkin_popup
 from ui.sound_effects import initialize_sound_effects
 from ui.tasks_view import TasksView
-from ui.theme import make_paw_icon
+from ui.theme import MOBILE_MINIMUM_WINDOW_SIZE, MOBILE_WINDOW_SIZE, make_paw_icon
 from ui.utility_views import MusicView, SettingsView
 
 REMINDER_CHECK_MS = 30_000
+
+
+class PawseMainWindow(QStackedWidget):
+    hidden_to_tray = Signal()
+
+    def closeEvent(self, event):
+        event.ignore()
+        self.hide()
+        self.hidden_to_tray.emit()
+
+    def changeEvent(self, event):
+        if event.type() == QEvent.WindowStateChange and self.isMinimized():
+            QTimer.singleShot(0, self._hide_to_tray)
+        super().changeEvent(event)
+
+    def _hide_to_tray(self):
+        self.hide()
+        self.hidden_to_tray.emit()
 
 
 class PawseApp:
@@ -48,14 +67,24 @@ class PawseApp:
             print(f"[Pawse audio] could not prepare local sound effects: {error}")
         initialize_sound_effects()
 
-        self.tracker = Tracker()
-        self.window = FocusWindow()
         self.store = TaskStore()
+        apply_user_config(self.store.focus_rules())
+        self.tracker = Tracker()
+        self.tracker.rule_store = self.store
+        self.window = FocusWindow()
         self.tasks = TasksView(self.store)
         self.music = MusicView()
         self.settings = SettingsView(self.tracker)
         self._screens = {"Tasks": self.tasks, "Focus": self.window,
                          "Music": self.music, "Settings": self.settings}
+        self.main_window = PawseMainWindow()
+        self.main_window.setWindowTitle("Pawse")
+        self.main_window.setWindowIcon(make_paw_icon())
+        self.main_window.setMinimumSize(*MOBILE_MINIMUM_WINDOW_SIZE)
+        self.main_window.resize(*MOBILE_WINDOW_SIZE)
+        for screen in self._screens.values():
+            self.main_window.addWidget(screen)
+        self.main_window.setCurrentWidget(self.tasks)
         self._notified = set()                       # (task id, kind, date) already reminded
 
         self._setup_tray()
@@ -74,6 +103,7 @@ class PawseApp:
         self.window.session_started.connect(self.tracker.reset_episode)
         self.window.session_completed.connect(self._on_session_completed)
         self.window.hidden_to_tray.connect(self._tray_hint)
+        self.main_window.hidden_to_tray.connect(self._tray_hint)
         self._hint_shown = False
 
         # My Tasks <-> Focus Mode
@@ -121,19 +151,15 @@ class PawseApp:
         selected = self._screens.get(tab)
         if selected is None:
             return
-        for screen in self._screens.values():
-            screen.hide()
-        selected.show()
-        selected.raise_()
-        selected.activateWindow()
-        if tab == "Focus":
-            self.window.show_normal()
+        self.main_window.setCurrentWidget(selected)
+        self.main_window.showNormal()
+        self.main_window.raise_()
+        self.main_window.activateWindow()
 
     def start_focus_on_task(self, title):
         """My Tasks -> Start Focus: 'FOCUSING ON: <title>' and a fresh running session."""
-        self.tasks.hide()
         self.window.begin_focus(title)
-        self.window.show_normal()
+        self.show_tab("Focus")
 
     # ---- session <-> tracker -----------------------------------------------------
     def on_session_state(self, state):
@@ -172,7 +198,7 @@ class PawseApp:
             if not self.tracker.mark_as_work(dialog.scope):
                 self.tray.showMessage("Pawse", "This item cannot be allowed from the popup. Use Settings.",
                                       QSystemTrayIcon.Warning, 5000)
-        except OSError as error:
+        except (OSError, sqlite3.Error) as error:
             print(f"[Pawse tracker] could not save work rule: {error}")
             self.tray.showMessage("Pawse", f"Could not save the work rule: {error}",
                                   QSystemTrayIcon.Warning, 6000)
@@ -235,6 +261,7 @@ class PawseApp:
         if self.popup is not None:
             self.popup.hide()
         self.tray.hide()
+        self.main_window.hide()
         self.store.close()
         self.app.quit()
 

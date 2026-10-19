@@ -10,9 +10,9 @@ from PySide6.QtCore import QLocale, QPointF, Qt, QTimer
 from PySide6.QtGui import QColor, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (QAbstractSpinBox, QButtonGroup, QCheckBox, QColorDialog, QComboBox,
                                QApplication, QDialog, QGridLayout, QHBoxLayout, QLabel, QLineEdit,
-                               QPushButton, QSpinBox, QVBoxLayout, QWidget)
+                               QMessageBox, QPushButton, QSpinBox, QVBoxLayout, QWidget)
 
-from PC.core.task_store import DEFAULT_REMINDER_PRESETS, FREQUENCIES, SWATCHES, parse_iso
+from core.task_store import DEFAULT_REMINDER_PRESETS, FREQUENCIES, SWATCHES, parse_iso
 from ui.date_time_picker import DateTimeButton
 from ui.tasks_theme import FULL_QSS
 from ui.theme import COCOA
@@ -243,6 +243,10 @@ class AddTaskDialog(QDialog):
         self.cat_grid.setSpacing(8)
         lay.addWidget(self.cat_wrap)
         self._rebuild_categories()
+        self.delete_category_button = QPushButton("Delete selected category")
+        self.delete_category_button.setObjectName("chipAdd")
+        self.delete_category_button.clicked.connect(self._delete_category)
+        lay.addWidget(self.delete_category_button)
         lay.addSpacing(18)
 
         # ---- reminder -----------------------------------------------------
@@ -434,6 +438,24 @@ class AddTaskDialog(QDialog):
             self.store.add_category(dlg.name, dlg.color)
             self._cat = dlg.name
             QTimer.singleShot(0, self._rebuild_categories)   # the clicked button is about to be replaced
+
+    def _delete_category(self):
+        if self._cat == "Personal":
+            QMessageBox.information(self, "Default category",
+                                    "The Personal category is required as the default.")
+            return
+        answer = QMessageBox.question(
+            self, "Delete category",
+            f"Delete '{self._cat}'? Tasks in it will move to Personal.",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if answer != QMessageBox.Yes:
+            return
+        if self.store.delete_category(self._cat):
+            self._cat = "Personal"
+            QTimer.singleShot(0, self._rebuild_categories)
+        else:
+            QMessageBox.warning(self, "Category unavailable",
+                                "That category could not be deleted.")
 
     # ---- toggles -----------------------------------------------------------
     def _sync_remind(self):

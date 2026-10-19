@@ -10,7 +10,7 @@ import datetime as dt
 import sqlite3
 import json
 
-from PC.core.config import data_dir
+from core.config import DEFAULTS, data_dir, load_config
 
 DB_PATH = data_dir() / "tasks.db"
 
@@ -78,6 +78,29 @@ class TaskStore:
             if self.db.execute("SELECT COUNT(*) FROM categories").fetchone()[0] == 0:
                 self.db.executemany("INSERT INTO categories (name, color, pos) VALUES (?, ?, ?)",
                                     [(n, c, i) for i, (n, c) in enumerate(DEFAULT_CATEGORIES)])
+            self.db.execute("""
+                CREATE TABLE IF NOT EXISTS focus_rules (
+                    rule_type TEXT NOT NULL,
+                    value     TEXT NOT NULL,
+                    PRIMARY KEY (rule_type, value)
+                )""")
+            self.db.execute("""
+                CREATE TABLE IF NOT EXISTS app_metadata (
+                    key   TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
+                )""")
+            imported = self.db.execute(
+                "SELECT value FROM app_metadata WHERE key = 'focus_rules_imported'").fetchone()
+            if imported is None:
+                cfg = load_config()
+                rule_types = [key for key in DEFAULTS
+                              if key.endswith(("processes", "sites", "keywords"))]
+                self.db.executemany(
+                    "INSERT OR IGNORE INTO focus_rules (rule_type, value) VALUES (?, ?)",
+                    [(key, str(value).lower()) for key in rule_types
+                     for value in cfg.get(key, [])])
+                self.db.execute(
+                    "INSERT INTO app_metadata (key, value) VALUES ('focus_rules_imported', '1')")
 
     @staticmethod
     def _task(row) -> dict:
@@ -155,12 +178,51 @@ class TaskStore:
 
     def add_category(self, name, color):
         name = name.strip()
+        if not name:
+            raise ValueError("Category names cannot be empty.")
         with self.db:
             pos = self.db.execute("SELECT COALESCE(MAX(pos), -1) + 1 FROM categories").fetchone()[0]
             self.db.execute(
                 "INSERT INTO categories (name, color, pos) VALUES (?, ?, ?)"
                 " ON CONFLICT(name) DO UPDATE SET color = excluded.color", (name, color, pos))
             self.db.execute("UPDATE tasks SET category_color = ? WHERE category_name = ?", (color, name))
+
+    def delete_category(self, name):
+        if name == "Personal":
+            return False
+        with self.db:
+            personal = self.db.execute(
+                "SELECT color FROM categories WHERE name = 'Personal'").fetchone()
+            if personal is None:
+                self.db.execute(
+                    "INSERT INTO categories (name, color, pos) VALUES ('Personal', '#C8E6C9', 0)")
+                personal_color = "#C8E6C9"
+            else:
+                personal_color = personal["color"]
+            deleted = self.db.execute(
+                "DELETE FROM categories WHERE name = ?", (name,)).rowcount
+            if deleted:
+                self.db.execute(
+                    "UPDATE tasks SET category_name = 'Personal', category_color = ? "
+                    "WHERE category_name = ?", (personal_color, name))
+        return bool(deleted)
+
+    def focus_rules(self):
+        rules = {key: [] for key in DEFAULTS
+                 if key.endswith(("processes", "sites", "keywords"))}
+        for row in self.db.execute("SELECT rule_type, value FROM focus_rules"):
+            rules.setdefault(row["rule_type"], []).append(row["value"])
+        return rules
+
+    def save_focus_rules(self, config):
+        rule_types = {key for key in DEFAULTS
+                      if key.endswith(("processes", "sites", "keywords"))}
+        with self.db:
+            self.db.execute("DELETE FROM focus_rules")
+            self.db.executemany(
+                "INSERT INTO focus_rules (rule_type, value) VALUES (?, ?)",
+                [(key, str(value).lower()) for key in rule_types
+                 for value in config.get(key, [])])
 
     def reminder_presets(self):
         return [r["minutes"] for r in self.db.execute("SELECT minutes FROM reminder_presets ORDER BY minutes DESC")]
